@@ -55,10 +55,6 @@ app.get("/", (req, res) => {
   res.send("<h1>Welcom to SE NPRU Blog resfull api</h1>");
 });
 
-// เพิ่ม handler สำหรับ POST / เพื่อรองรับ LINE Webhook Verify
-app.post("/", (req, res) => {
-  res.status(200).send("OK");
-});
 
 app.use("/api/v1/auth", userRouter);
 app.use(authenticateToken);

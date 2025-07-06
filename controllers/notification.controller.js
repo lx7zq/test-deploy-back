@@ -1,5 +1,7 @@
 const ProductModel = require('../models/Product');
 const StatusModel = require('../models/Status');
+const axios = require('axios');
+require('dotenv').config(); // โหลด env ถ้ายังไม่มี
 
 // ฟังก์ชันสำหรับดึงการแจ้งเตือนทั้งหมด
 exports.getAllNotifications = async (req, res) => {
@@ -148,5 +150,29 @@ exports.getExpiringNotifications = async (req, res) => {
             message: 'เกิดข้อผิดพลาดในการดึงข้อมูลการแจ้งเตือนสินค้าใกล้หมดอายุ',
             error: error.message
         });
+    }
+};
+
+// ฟังก์ชันใหม่: ส่งแจ้งเตือนเข้า LINE Messaging API
+exports.sendLineNotification = async (req, res) => {
+    const { userId, message } = req.body;
+    const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
+    try {
+        await axios.post(
+            'https://api.line.me/v2/bot/message/push',
+            {
+                to: userId,
+                messages: [{ type: 'text', text: message }]
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${LINE_ACCESS_TOKEN}`
+                }
+            }
+        );
+        res.json({ success: true, message: 'ส่งแจ้งเตือนเข้า LINE สำเร็จ' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'ส่งแจ้งเตือนเข้า LINE ไม่สำเร็จ', error: error.message });
     }
 }; 

@@ -11,4 +11,7 @@ router.get('/low-stock', notificationController.getLowStockNotifications);
 // ดึงการแจ้งเตือนสินค้าใกล้หมดอายุ
 router.get('/expiring', notificationController.getExpiringNotifications);
 
+// แจ้งเตือนเข้า LINE Messaging API
+router.post('/line-notify', notificationController.sendLineNotification);
+
 module.exports = router; 
