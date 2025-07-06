@@ -8,7 +8,9 @@ const {
   checkAuth,
   updateProfileImage,
   updateUser,
-  updatePassword
+  updatePassword,
+  lineLoginCallback,
+  saveLineUserId
 } = require("../controllers/user.controller");
 const authenticateToken = require("../middlewares/authJwt.middleware");
 const { uploadUserImage } = require("../middlewares/upload");
@@ -22,5 +24,11 @@ router.get("/check-auth", authenticateToken, checkAuth);
 router.patch("/profile-image", authenticateToken, uploadUserImage.single("profileImage"), updateProfileImage);
 router.put("/profile", authenticateToken, uploadUserImage.single("profileImage"), updateUser);
 router.put("/password", authenticateToken, updatePassword);
+
+// LINE Login Callback
+router.get('/line/callback', lineLoginCallback);
+
+// Save LINE userId to user profile
+router.post('/line/save-line-userid', saveLineUserId);
 
 module.exports = router;

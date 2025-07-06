@@ -4,6 +4,7 @@ const UserModel = require("../models/User");
 const cloudinary = require("../utils/cloudinary");
 require("dotenv").config();
 const secret = process.env.SECRET;
+const axios = require('axios');
 
 // Register
 exports.register = async (req, res) => {
@@ -250,5 +251,44 @@ exports.updatePassword = async (req, res) => {
   } catch (error) {
     console.error('Error updating password:', error);
     res.status(500).json({ message: 'เกิดข้อผิดพลาดในการอัพเดทรหัสผ่าน' });
+  }
+};
+
+// LINE Login Callback
+exports.lineLoginCallback = async (req, res) => {
+  const code = req.query.code;
+  if (!code) return res.status(400).send('Missing code');
+  try {
+    // ขอ access token
+    const tokenRes = await axios.post('https://api.line.me/oauth2/v2.1/token', new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: process.env.LINE_LOGIN_CALLBACK_URL,
+      client_id: process.env.LINE_LOGIN_CLIENT_ID,
+      client_secret: process.env.LINE_LOGIN_CLIENT_SECRET
+    }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+    const accessToken = tokenRes.data.access_token;
+    // ขอ profile
+    const profileRes = await axios.get('https://api.line.me/v2/profile', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const lineUserId = profileRes.data.userId;
+    // ส่ง userId LINE กลับไป frontend (หรือ redirect พร้อม query string)
+    res.json({ lineUserId, displayName: profileRes.data.displayName, pictureUrl: profileRes.data.pictureUrl });
+  } catch (error) {
+    res.status(500).json({ message: 'LINE Login failed', error: error.message });
+  }
+};
+
+// Save LINE userId to user profile (ต้อง login ในระบบก่อน)
+exports.saveLineUserId = async (req, res) => {
+  const userId = req.user.id; // ดึง user id จาก token
+  const { lineUserId } = req.body;
+  if (!lineUserId) return res.status(400).json({ message: 'Missing lineUserId' });
+  try {
+    const user = await UserModel.findByIdAndUpdate(userId, { lineUserId }, { new: true });
+    res.json({ message: 'บันทึก LINE userId สำเร็จ', user });
+  } catch (error) {
+    res.status(500).json({ message: 'บันทึก LINE userId ไม่สำเร็จ', error: error.message });
   }
 };
