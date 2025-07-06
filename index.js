@@ -30,7 +30,7 @@ try {
 }
 
 const corsOptions = {
-  origin: ['http://localhost:5173', BASE_URL, API_URL].filter(Boolean),
+  origin: [BASE_URL, API_URL],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
