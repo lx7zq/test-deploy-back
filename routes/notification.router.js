@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const notificationController = require('../controllers/notification.controller');
+const { getAllNotifications, getLowStockNotifications, getExpiringNotifications, broadcastLineNotification, broadcastStockAlert } = require('../controllers/notification.controller');
 
 // ดึงการแจ้งเตือนทั้งหมด
 router.get('/all', notificationController.getAllNotifications);
