@@ -29,6 +29,6 @@ router.put("/password", authenticateToken, updatePassword);
 router.get('/line/callback', lineLoginCallback);
 
 // Save LINE userId to user profile
-router.post('/line/save-line-userid', saveLineUserId);
+router.post('/line/save-line-userid', authenticateToken, saveLineUserId);
 
 module.exports = router;
