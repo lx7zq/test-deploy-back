@@ -1,6 +1,7 @@
 const ProductModel = require('../models/Product');
 const StatusModel = require('../models/Status');
 const axios = require('axios');
+const UserModel = require('../models/User');
 require('dotenv').config(); // โหลด env ถ้ายังไม่มี
 
 // ฟังก์ชันสำหรับดึงการแจ้งเตือนทั้งหมด
@@ -172,6 +173,53 @@ exports.sendLineNotification = async (req, res) => {
             }
         );
         res.json({ success: true, message: 'ส่งแจ้งเตือนเข้า LINE สำเร็จ' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'ส่งแจ้งเตือนเข้า LINE ไม่สำเร็จ', error: error.message });
+    }
+};
+
+// ฟังก์ชันใหม่: แจ้งเตือน LINE อัตโนมัติให้ user ทุกคนที่มี lineUserId เมื่อมีสินค้าใกล้หมดหรือหมดอายุ
+exports.sendStockLineNotification = async (req, res) => {
+    try {
+        // ดึง user ทุกคนที่เชื่อม LINE
+        const users = await UserModel.find({ lineUserId: { $ne: null } });
+        if (!users.length) return res.status(404).json({ message: 'ไม่พบผู้ใช้ที่เชื่อม LINE' });
+
+        // ดึงสินค้าที่ใกล้หมด/หมดอายุ
+        const [lowStockStatus, expiringStatus] = await Promise.all([
+            StatusModel.findOne({ statusName: 'สินค้าใกล้หมด' }),
+            StatusModel.findOne({ statusName: 'สินค้าใกล้หมดอายุ' })
+        ]);
+        const lowStockProducts = await ProductModel.find({ productStatuses: lowStockStatus._id });
+        const expiringProducts = await ProductModel.find({ productStatuses: expiringStatus._id });
+
+        let message = '';
+        if (lowStockProducts.length) {
+            message += `สินค้าใกล้หมด: ${lowStockProducts.map(p => p.productName).join(', ')}\n`;
+        }
+        if (expiringProducts.length) {
+            message += `สินค้าใกล้หมดอายุ: ${expiringProducts.map(p => p.productName).join(', ')}\n`;
+        }
+        if (!message) message = 'ไม่มีสินค้าใกล้หมดหรือใกล้หมดอายุ';
+
+        const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
+        // ส่งแจ้งเตือนให้ user ทุกคน
+        for (const user of users) {
+            await axios.post(
+                'https://api.line.me/v2/bot/message/push',
+                {
+                    to: user.lineUserId,
+                    messages: [{ type: 'text', text: message }]
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${LINE_ACCESS_TOKEN}`
+                    }
+                }
+            );
+        }
+        res.json({ success: true, message: 'ส่งแจ้งเตือนเข้า LINE สำเร็จ', notified: users.length });
     } catch (error) {
         res.status(500).json({ success: false, message: 'ส่งแจ้งเตือนเข้า LINE ไม่สำเร็จ', error: error.message });
     }

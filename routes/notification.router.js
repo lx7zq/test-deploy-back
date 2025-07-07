@@ -14,4 +14,7 @@ router.get('/expiring', notificationController.getExpiringNotifications);
 // แจ้งเตือนเข้า LINE Messaging API
 router.post('/line-notify', notificationController.sendLineNotification);
 
+// แจ้งเตือน LINE อัตโนมัติสำหรับสต็อกสินค้า
+router.post('/line/stock-notify', notificationController.sendStockLineNotification);
+
 module.exports = router; 
