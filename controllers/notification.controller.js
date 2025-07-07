@@ -154,186 +154,30 @@ exports.getExpiringNotifications = async (req, res) => {
     }
 };
 
-// ฟังก์ชันใหม่: ส่งแจ้งเตือนเข้า LINE Messaging API
-exports.sendLineNotification = async (req, res) => {
-    const { userId, message } = req.body;
-    const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
-    
-    // ตรวจสอบข้อมูลที่จำเป็น
-    if (!userId) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'กรุณาระบุ userId' 
-        });
-    }
-    
-    if (!message) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'กรุณาระบุข้อความ' 
-        });
-    }
-    
-    if (!LINE_ACCESS_TOKEN) {
-        return res.status(500).json({ 
-            success: false, 
-            message: 'ไม่พบ LINE_ACCESS_TOKEN ใน environment variables' 
-        });
-    }
-    
-    try {
-        console.log('กำลังส่งแจ้งเตือน LINE:', { userId, message: message.substring(0, 50) + '...' });
-        
-        const response = await axios.post(
-            'https://api.line.me/v2/bot/message/push',
-            {
-                to: userId,
-                messages: [{ type: 'text', text: message }]
-            },
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${LINE_ACCESS_TOKEN}`
-                }
-            }
-        );
-        
-        console.log('ส่งแจ้งเตือน LINE สำเร็จ:', response.data);
-        res.json({ success: true, message: 'ส่งแจ้งเตือนเข้า LINE สำเร็จ' });
-    } catch (error) {
-        console.error('Error ส่งแจ้งเตือน LINE:', error.response?.data || error.message);
-        
-        // แสดงรายละเอียด error ที่ชัดเจน
-        let errorMessage = 'ส่งแจ้งเตือนเข้า LINE ไม่สำเร็จ';
-        let errorDetails = error.message;
-        
-        if (error.response?.data) {
-            errorDetails = error.response.data;
-            if (error.response.data.message) {
-                errorMessage = error.response.data.message;
-            }
-        }
-        
-        res.status(500).json({ 
-            success: false, 
-            message: errorMessage, 
-            error: errorDetails,
-            statusCode: error.response?.status
-        });
-    }
-};
-
-// ฟังก์ชันใหม่: แจ้งเตือน LINE อัตโนมัติให้ user ทุกคนที่มี lineUserId เมื่อมีสินค้าใกล้หมดหรือหมดอายุ
-exports.sendStockLineNotification = async (req, res) => {
-    try {
-        const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
-        
-        if (!LINE_ACCESS_TOKEN) {
-            return res.status(500).json({ 
-                success: false, 
-                message: 'ไม่พบ LINE_ACCESS_TOKEN ใน environment variables' 
-            });
-        }
-        
-        // ดึง user ทุกคนที่เชื่อม LINE
-        const users = await UserModel.find({ lineUserId: { $ne: null } });
-        if (!users.length) {
-            return res.status(404).json({ 
-                success: false,
-                message: 'ไม่พบผู้ใช้ที่เชื่อม LINE' 
-            });
-        }
-
-        // ดึงสินค้าที่ใกล้หมด/หมดอายุ
-        const [lowStockStatus, expiringStatus] = await Promise.all([
-            StatusModel.findOne({ statusName: 'สินค้าใกล้หมด' }),
-            StatusModel.findOne({ statusName: 'สินค้าใกล้หมดอายุ' })
-        ]);
-        
-        const lowStockProducts = await ProductModel.find({ productStatuses: lowStockStatus._id });
-        const expiringProducts = await ProductModel.find({ productStatuses: expiringStatus._id });
-
-        let message = '';
-        if (lowStockProducts.length) {
-            message += `สินค้าใกล้หมด: ${lowStockProducts.map(p => p.productName).join(', ')}\n`;
-        }
-        if (expiringProducts.length) {
-            message += `สินค้าใกล้หมดอายุ: ${expiringProducts.map(p => p.productName).join(', ')}\n`;
-        }
-        if (!message) {
-            message = 'ไม่มีสินค้าใกล้หมดหรือใกล้หมดอายุ';
-        }
-
-        console.log('กำลังส่งแจ้งเตือน LINE ให้', users.length, 'คน');
-        console.log('ข้อความ:', message);
-
-        // ส่งแจ้งเตือนให้ user ทุกคน
-        const results = [];
-        for (const user of users) {
-            try {
-                const response = await axios.post(
-                    'https://api.line.me/v2/bot/message/push',
-                    {
-                        to: user.lineUserId,
-                        messages: [{ type: 'text', text: message }]
-                    },
-                    {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${LINE_ACCESS_TOKEN}`
-                        }
-                    }
-                );
-                results.push({ userId: user.lineUserId, success: true });
-                console.log('ส่งสำเร็จให้:', user.lineUserId);
-            } catch (error) {
-                console.error('ส่งไม่สำเร็จให้:', user.lineUserId, error.response?.data || error.message);
-                results.push({ 
-                    userId: user.lineUserId, 
-                    success: false, 
-                    error: error.response?.data || error.message 
-                });
-            }
-        }
-        
-        const successCount = results.filter(r => r.success).length;
-        const failCount = results.filter(r => !r.success).length;
-        
-        res.json({ 
-            success: true, 
-            message: `ส่งแจ้งเตือนเข้า LINE สำเร็จ ${successCount} คน, ล้มเหลว ${failCount} คน`, 
-            notified: successCount,
-            failed: failCount,
-            results
-        });
-    } catch (error) {
-        console.error('Error ใน sendStockLineNotification:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'ส่งแจ้งเตือนเข้า LINE ไม่สำเร็จ', 
-            error: error.response?.data || error.message 
-        });
-    }
-};
-
-// ฟังก์ชัน broadcast แจ้งเตือน LINE
-exports.broadcastLineNotification = async (req, res) => {
-  const { message } = req.body;
+// Broadcast แจ้งเตือนสินค้าใกล้หมด/ใกล้หมดอายุ
+exports.broadcastStockAlert = async (req, res) => {
   const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
-
-  if (!message) {
-    return res.status(400).json({ success: false, message: 'กรุณาระบุข้อความ' });
-  }
-  if (!LINE_ACCESS_TOKEN) {
-    return res.status(500).json({ success: false, message: 'ไม่พบ LINE_ACCESS_TOKEN' });
-  }
-
   try {
-    const response = await axios.post(
+    // 1. ดึงสินค้าที่ใกล้หมด/ใกล้หมดอายุ
+    const lowStockStatus = await StatusModel.findOne({ statusName: 'สินค้าใกล้หมด' });
+    const expiringStatus = await StatusModel.findOne({ statusName: 'สินค้าใกล้หมดอายุ' });
+    const lowStockProducts = await ProductModel.find({ productStatuses: lowStockStatus._id });
+    const expiringProducts = await ProductModel.find({ productStatuses: expiringStatus._id });
+
+    // 2. สร้างข้อความ
+    let message = '';
+    if (lowStockProducts.length) {
+      message += `สินค้าใกล้หมด: ${lowStockProducts.map(p => p.productName).join(', ')}\n`;
+    }
+    if (expiringProducts.length) {
+      message += `สินค้าใกล้หมดอายุ: ${expiringProducts.map(p => p.productName).join(', ')}\n`;
+    }
+    if (!message) message = 'ไม่มีสินค้าใกล้หมดหรือใกล้หมดอายุ';
+
+    // 3. ส่ง broadcast
+    await axios.post(
       'https://api.line.me/v2/bot/message/broadcast',
-      {
-        messages: [{ type: 'text', text: message }]
-      },
+      { messages: [{ type: 'text', text: message }] },
       {
         headers: {
           'Content-Type': 'application/json',
@@ -341,11 +185,11 @@ exports.broadcastLineNotification = async (req, res) => {
         }
       }
     );
-    res.json({ success: true, message: 'ส่ง broadcast เข้า LINE สำเร็จ', data: response.data });
+    res.json({ success: true, message: 'แจ้งเตือน broadcast สำเร็จ', detail: message });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'ส่ง broadcast เข้า LINE ไม่สำเร็จ',
+      message: 'แจ้งเตือน broadcast ไม่สำเร็จ',
       error: error.response?.data || error.message
     });
   }
