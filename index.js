@@ -78,7 +78,7 @@ app.use("/api/v1/supplier", supplierRouter);
 app.use('/api/v1/notifications', notificationRouter);
 
 // รันทุกวัน 8 โมงเช้า (เวลาของ server)
-cron.schedule('*/2 * * * *', () => {
+cron.schedule('0 8 * * *', () => {
   console.log('Cron: เริ่ม broadcast แจ้งเตือนสินค้าใกล้หมด/ใกล้หมดอายุ (อัตโนมัติ)');
   notificationController.broadcastStockAlert(
     { body: {} },
