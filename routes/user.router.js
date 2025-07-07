@@ -10,7 +10,8 @@ const {
   updateUser,
   updatePassword,
   lineLoginCallback,
-  saveLineUserId
+  saveLineUserId,
+  bindLineUserId
 } = require("../controllers/user.controller");
 const authenticateToken = require("../middlewares/authJwt.middleware");
 const { uploadUserImage } = require("../middlewares/upload");
@@ -30,5 +31,8 @@ router.get('/line/callback', lineLoginCallback);
 
 // Save LINE userId to user profile
 router.post('/line/save-line-userid', authenticateToken, saveLineUserId);
+
+// Bind LINE userId to user profile
+router.post('/line/bind', authenticateToken, bindLineUserId);
 
 module.exports = router;

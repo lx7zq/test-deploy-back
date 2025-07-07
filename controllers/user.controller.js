@@ -5,6 +5,7 @@ const cloudinary = require("../utils/cloudinary");
 require("dotenv").config();
 const secret = process.env.SECRET;
 const axios = require('axios');
+const LineBindCode = require('../models/LineBindCode');
 
 // Register
 exports.register = async (req, res) => {
@@ -291,4 +292,14 @@ exports.saveLineUserId = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'บันทึก LINE userId ไม่สำเร็จ', error: error.message });
   }
+};
+
+exports.bindLineUserId = async (req, res) => {
+  const { code } = req.body;
+  const userId = req.user.id; // ต้อง login อยู่
+  const temp = await LineBindCode.findOne({ code });
+  if (!temp) return res.status(400).json({ message: 'รหัสไม่ถูกต้องหรือหมดอายุ' });
+  await UserModel.findByIdAndUpdate(userId, { lineUserId: temp.lineUserId });
+  await LineBindCode.deleteOne({ code });
+  res.json({ message: 'เชื่อมบัญชี LINE สำเร็จ' });
 };
