@@ -164,15 +164,17 @@ exports.broadcastStockAlert = async (req, res) => {
     const lowStockProducts = await ProductModel.find({ productStatuses: lowStockStatus._id });
     const expiringProducts = await ProductModel.find({ productStatuses: expiringStatus._id });
 
-    // 2. สร้างข้อความ
+    // 2. สร้างข้อความ (จัดรูปแบบ)
     let message = '';
     if (lowStockProducts.length) {
-      message += `สินค้าใกล้หมด: ${lowStockProducts.map(p => p.productName).join(', ')}\n`;
+      message += `🟠 สินค้าใกล้หมด\n`;
+      message += lowStockProducts.map(p => `• ${p.productName} (เหลือ ${p.quantity} ชิ้น)`).join('\n') + '\n';
     }
     if (expiringProducts.length) {
-      message += `สินค้าใกล้หมดอายุ: ${expiringProducts.map(p => p.productName).join(', ')}\n`;
+      message += `🟡 สินค้าใกล้หมดอายุ\n`;
+      message += expiringProducts.map(p => `• ${p.productName} (หมดอายุ ${p.expirationDate ? new Date(p.expirationDate).toLocaleDateString('th-TH') : '-'})`).join('\n') + '\n';
     }
-    if (!message) message = 'ไม่มีสินค้าใกล้หมดหรือใกล้หมดอายุ';
+    if (!message) message = '✅ ไม่มีสินค้าใกล้หมดหรือใกล้หมดอายุ';
 
     // 3. ส่ง broadcast
     await axios.post(
