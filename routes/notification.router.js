@@ -17,4 +17,7 @@ router.post('/line-notify', notificationController.sendLineNotification);
 // แจ้งเตือน LINE อัตโนมัติสำหรับสต็อกสินค้า
 router.post('/line/stock-notify', notificationController.sendStockLineNotification);
 
+// Broadcast แจ้งเตือน LINE
+router.post('/line/broadcast', notificationController.broadcastLineNotification);
+
 module.exports = router; 

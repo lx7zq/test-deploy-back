@@ -314,4 +314,39 @@ exports.sendStockLineNotification = async (req, res) => {
             error: error.response?.data || error.message 
         });
     }
+};
+
+// ฟังก์ชัน broadcast แจ้งเตือน LINE
+exports.broadcastLineNotification = async (req, res) => {
+  const { message } = req.body;
+  const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
+
+  if (!message) {
+    return res.status(400).json({ success: false, message: 'กรุณาระบุข้อความ' });
+  }
+  if (!LINE_ACCESS_TOKEN) {
+    return res.status(500).json({ success: false, message: 'ไม่พบ LINE_ACCESS_TOKEN' });
+  }
+
+  try {
+    const response = await axios.post(
+      'https://api.line.me/v2/bot/message/broadcast',
+      {
+        messages: [{ type: 'text', text: message }]
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${LINE_ACCESS_TOKEN}`
+        }
+      }
+    );
+    res.json({ success: true, message: 'ส่ง broadcast เข้า LINE สำเร็จ', data: response.data });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'ส่ง broadcast เข้า LINE ไม่สำเร็จ',
+      error: error.response?.data || error.message
+    });
+  }
 }; 

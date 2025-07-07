@@ -25,10 +25,4 @@ router.patch("/profile-image", authenticateToken, uploadUserImage.single("profil
 router.put("/profile", authenticateToken, uploadUserImage.single("profileImage"), updateUser);
 router.put("/password", authenticateToken, updatePassword);
 
-// LINE Login Callback
-router.get('/line/callback', lineLoginCallback);
-
-// Save LINE userId to user profile
-router.post('/line/save-line-userid', authenticateToken, saveLineUserId);
-
 module.exports = router;
