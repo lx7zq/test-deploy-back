@@ -22,6 +22,10 @@ const swaggerSetup = require('./docs/swagger');
 const { initializeStatuses } = require('./config/initialData');
 const authenticateToken = require("./middlewares/authJwt.middleware");
 
+// === Cron Job สำหรับ broadcast แจ้งเตือนสินค้าใกล้หมด/ใกล้หมดอายุ ===
+const cron = require('node-cron');
+const notificationController = require('./controllers/notification.controller');
+
 try {
   mongoose.connect(DB_URL);
   console.log("Connect to mongo DB Successfully");
@@ -72,6 +76,18 @@ app.use("/api/v1/status", statusRouter);
 app.use("/api/v1/purchase-orders", purchaseOrderRouter);
 app.use("/api/v1/supplier", supplierRouter);
 app.use('/api/v1/notifications', notificationRouter);
+
+// รันทุกวัน 8 โมงเช้า (เวลาของ server)
+cron.schedule('*/2 * * * *', () => {
+  console.log('Cron: เริ่ม broadcast แจ้งเตือนสินค้าใกล้หมด/ใกล้หมดอายุ (อัตโนมัติ)');
+  notificationController.broadcastStockAlert(
+    { body: {} },
+    {
+      json: (data) => console.log('Broadcast result:', data),
+      status: () => ({ json: (data) => console.log('Broadcast error:', data) })
+    }
+  );
+});
 
 app.listen(PORT, () => {
   console.log("Server is running on http://localhost:" + PORT);
