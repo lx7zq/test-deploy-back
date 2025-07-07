@@ -7,8 +7,7 @@ const UserSchema = new Schema({
   phoneNumber: { type: String, default: null },
   address: { type: String, default: null },
   shopName: { type: String, default: null },
-  profileImage: { type: String, default: null },
-  lineUserId: { type: String, default: null }
+  profileImage: { type: String, default: null }
 }, { timestamps: true });
 
 const UserModel = model("User", UserSchema);
